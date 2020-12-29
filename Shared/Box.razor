@@ -1,0 +1,69 @@
+@inject IJSRuntime JS
+@using System.Drawing
+
+<div class="box-wrapper">
+    <div class="box" @onmousedown="OnMouseDown" @onmouseup="OnMouseUp" style="top: @(pos.Y)px; left: @(pos.X)px;">
+        <div>
+            @ChildContent
+        </div>
+    </div>
+
+</div>
+
+@code {
+    private Point pos = new Point(0, 0);
+
+    private bool dragging = false;
+    private Point dragStartBox;
+    private Point dragStartMouse;
+
+    private DotNetObjectReference<Box> objectReference;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    private void OnMouseDown(MouseEventArgs eventArgs)
+    {
+        if (dragging)
+        {
+            return;
+        }
+
+        dragging = true;
+        dragStartBox = pos;
+        dragStartMouse = new Point((int)eventArgs.ScreenX, (int)eventArgs.ScreenY);
+
+
+        objectReference = DotNetObjectReference.Create(this);
+        JS.InvokeVoidAsync("jsFunctions.addMouseMoveListener", objectReference);
+    }
+
+    [JSInvokable]
+    public void OnMouseMove(int screenX, int screenY)
+    {
+        if (!dragging)
+        {
+            return;
+        }
+        pos = Point.Add(
+            Point.Subtract(
+            new Point(screenX, screenY),
+            new Size(dragStartMouse)
+            ),
+            new Size(dragStartBox)
+            );
+
+        StateHasChanged();
+    }
+
+    private void OnMouseUp(MouseEventArgs eventArgs)
+    {
+        if (!dragging)
+        {
+            return;
+        }
+
+        dragging = false;
+        JS.InvokeVoidAsync("jsFunctions.removeMouseMoveListener", objectReference);
+    }
+}
